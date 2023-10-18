@@ -44,7 +44,7 @@ class TestDemoGPT(unittest.TestCase):
     @classmethod
     def writeFinalToFile(cls, res, instruction):
         with open(f"test_final_{TestDemoGPT.TEST_INDEX}.py", "w") as f:
-            f.write("#" + instruction + "\n")
+            f.write(f"#{instruction}" + "\n")
             f.write(res)
             f.flush()
 
@@ -134,19 +134,18 @@ class TestDemoGPT(unittest.TestCase):
             instruction,
         )
         for _ in range(TestDemoGPT.REFINE_ITERATIONS):
-            if not task_controller_result["valid"]:
-                task_list = Chains.refineTasks(
-                    instruction=instruction,
-                    tasks=task_list,
-                    feedback=task_controller_result["feedback"],
-                )
-                self.writeToFile(
-                    "REFINED TASK LIST", json.dumps(task_list, indent=4), instruction
-                )
-                task_controller_result = Chains.taskController(tasks=task_list)
-            else:
+            if task_controller_result["valid"]:
                 break
 
+            task_list = Chains.refineTasks(
+                instruction=instruction,
+                tasks=task_list,
+                feedback=task_controller_result["feedback"],
+            )
+            self.writeToFile(
+                "REFINED TASK LIST", json.dumps(task_list, indent=4), instruction
+            )
+            task_controller_result = Chains.taskController(tasks=task_list)
             self.writeToFile(
                 "FEEDBACK", task_controller_result["feedback"], instruction
             )

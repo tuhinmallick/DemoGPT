@@ -1,4 +1,4 @@
-system_template = f"""
+system_template = """
 You are a helpful assistant that can determine all the inputs the system should take from the user to accomplish the given instruction.
 This list includes both the initial and intermediate inputs that the system should take to work properly
 If the system is chat-based then, it should have an input corresponding to that as one of the system inputs.

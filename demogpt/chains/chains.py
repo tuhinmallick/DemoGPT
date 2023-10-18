@@ -234,9 +234,8 @@ class Chains:
             human_template=prompts.how_to_use.human_template,
             code_snippets=code_snippets
         )
-        
-        total_code = f'st.sidebar.markdown("""{steps}""")\n'
-        return total_code
+
+        return f'st.sidebar.markdown("""{steps}""")\n'
     
     @classmethod
     def about(cls, instruction, title):
@@ -246,9 +245,8 @@ class Chains:
             instruction=instruction,
             title=title
         )
-        
-        code = f'\nst.sidebar.markdown("# About")\nst.sidebar.markdown("{markdown}")'
-        return code
+
+        return f'\nst.sidebar.markdown("# About")\nst.sidebar.markdown("{markdown}")'
 
     @classmethod
     def imports(cls, code_snippets):
@@ -271,10 +269,8 @@ class Chains:
         )
         code = utils.refine(code)
         code = autopep8.fix_code(code)
-        
-        has_problem = utils.catchErrors(code)
-        
-        if has_problem:
+
+        if has_problem := utils.catchErrors(code):
             print("Switching to the 16k...")
             code = cls.getChain(
                 system_template=prompts.combine_v2.system_template,
@@ -285,7 +281,7 @@ class Chains:
                 function_names=function_names
             )
             code = utils.refine(code)
-        
+
         return code
 
     @classmethod
@@ -322,9 +318,7 @@ class Chains:
         pattern = r'(openai_api_key\s*=\s*st\.sidebar\.text_input\((?:[^()]*|\([^)]*\))*\))'
         # replacement string with additional code
         replacement = how_to_markdown + r'\1' + about
-        # substitute using regex
-        final_code = re.sub(pattern, replacement, code_snippets, flags=re.DOTALL)
-        return final_code
+        return re.sub(pattern, replacement, code_snippets, flags=re.DOTALL)
     
     @classmethod
     def getAboutAndHTU(cls, instruction, title, code_snippets):

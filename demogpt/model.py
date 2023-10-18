@@ -139,19 +139,18 @@ We appreciate your understanding and look forward to seeing what you create! ðŸ˜
         plan_controller_result = Chains.planController(plan=plan, app_type=app_type)
 
         for _ in trange(self.plan_max_steps):
-            if not plan_controller_result["valid"]:
-                plan = Chains.planRefiner(
-                    instruction=instruction,
-                    plan=plan,
-                    feedback=plan_controller_result["feedback"],
-                    app_type=app_type,
-                )
-                plan_controller_result = Chains.planController(
-                    plan=plan, app_type=app_type
-                )
-            else:
+            if plan_controller_result["valid"]:
                 break
 
+            plan = Chains.planRefiner(
+                instruction=instruction,
+                plan=plan,
+                feedback=plan_controller_result["feedback"],
+                app_type=app_type,
+            )
+            plan_controller_result = Chains.planController(
+                plan=plan, app_type=app_type
+            )
         yield {
             "stage": "task",
             "completed": False,
@@ -191,28 +190,27 @@ We appreciate your understanding and look forward to seeing what you create! ðŸ˜
         )
 
         for _ in trange(self.max_steps):
-            if not task_controller_result["valid"]:
-                try:
-                    task_list = Chains.refineTasks(
-                        instruction=instruction,
-                        tasks=task_list,
-                        feedback=task_controller_result["feedback"],
-                        app_type=app_type,
-                    )
-                    task_controller_result = Chains.taskController(
-                        tasks=task_list, app_type=app_type
-                    )
-                except Exception as e:
-                    print(e)
-                    if "16k" in Chains.model:
-                        break
-                    st.toast(
-                        "To increase the window size, changing model type to gpt-3.5-turbo-16k-0613"
-                    )
-                    Chains.setModel("gpt-3.5-turbo-16k-0613")
-            else:
+            if task_controller_result["valid"]:
                 break
 
+            try:
+                task_list = Chains.refineTasks(
+                    instruction=instruction,
+                    tasks=task_list,
+                    feedback=task_controller_result["feedback"],
+                    app_type=app_type,
+                )
+                task_controller_result = Chains.taskController(
+                    tasks=task_list, app_type=app_type
+                )
+            except Exception as e:
+                print(e)
+                if "16k" in Chains.model:
+                    break
+                st.toast(
+                    "To increase the window size, changing model type to gpt-3.5-turbo-16k-0613"
+                )
+                Chains.setModel("gpt-3.5-turbo-16k-0613")
         if not task_controller_result["valid"]:
 
             yield {
@@ -227,7 +225,7 @@ We appreciate your understanding and look forward to seeing what you create! ðŸ˜
         else:
             
             title = Chains.title(instruction=instruction)
-            
+
             task_list = reorderTasksForChatApp(task_list) # for chat apps, remove the code between chat input and chat output
 
             code_snippets = init(title)
@@ -271,10 +269,8 @@ We appreciate your understanding and look forward to seeing what you create! ðŸ˜
             }
 
             chat_app = any(
-                [
-                    task["task_type"] in ["ui_input_chat", "ui_output_chat", "chat"]
-                    for task in task_list
-                ]
+                task["task_type"] in ["ui_input_chat", "ui_output_chat", "chat"]
+                for task in task_list
             )
 
             if chat_app:
@@ -295,7 +291,7 @@ We appreciate your understanding and look forward to seeing what you create! ðŸ˜
 
             # finalize the format
             final_code = autopep8.fix_code(final_code)
-            
+
             final_code = Chains.addAboutAndHTU(instruction, title, final_code)
 
             yield {
@@ -335,7 +331,7 @@ with st.form(key="form"):
     if submit_button:
 {outputs}
 """
-        
+
         yield {
             "stage": "system_inputs",
             "completed": False,
@@ -346,12 +342,11 @@ with st.form(key="form"):
         }
 
         app_type = Chains.appType(instruction=instruction)
-        
+
         if app_type["is_chat"] == "true":
-            for data in self.__call__(instruction):
-                yield data            
+            yield from self.__call__(instruction)
         else:
-        
+
             system_inputs = Chains.systemInputs(instruction=instruction)
 
             yield {
@@ -362,7 +357,7 @@ with st.form(key="form"):
                 "message": "Plan creation has started...",
                 "failed": False,
             }
-            
+
             sleep(10)
 
             plan = Chains.planWithInputs(
@@ -480,24 +475,24 @@ with st.form(key="form"):
                 }
 
             else:
-                
+
                 imports = ""
                 functions = ""
                 inputs = ""
                 outputs = ""
-                
+
                 title = Chains.title(instruction=instruction)
-                
+
                 task_list = reorderTasksForChatApp(task_list) # for chat apps, remove the code between chat input and chat output
-                
+
                 res = initSeperate(title)
-                
+
                 prefix = res["prefix"]
-                
+
                 imports = res["imports"]
-                
+
                 code_snippets = res["code"]
-                
+
                 sleep(1)
 
                 yield {
@@ -514,15 +509,15 @@ with st.form(key="form"):
                 for i, task in enumerate(task_list):
                     res = getCodeSnippetSeperate(task, code_snippets, self.max_steps)
                     code = "#" + task["description"] + "\n" + res["code"]
-                    
+
                     if res["imports"] not in imports:
                         imports += res["imports"] + "\n"
                     functions += res["functions"] + "\n"
                     inputs += res["inputs"] + "\n"
                     outputs += res["outputs"] + "\n"
-                    
+
                     code_snippets += code
-                    
+
                     yield {
                         "stage": "draft",
                         "completed": i + 1 == num_of_tasks,
@@ -543,12 +538,12 @@ with st.form(key="form"):
                     "message": "Code snippets are being combined...",
                     "title":title
                 }
-                
+
                 inputs = textwrap.indent(inputs, 4*' ')
                 outputs = textwrap.indent(outputs, 8*' ')
-                
+
                 how_to, about = Chains.getAboutAndHTU(instruction, title, code_snippets)
-                
+
                 final_code = getCode(imports, functions, prefix, inputs, outputs, how_to, about, title)
                 # finalize the format
                 final_code = autopep8.fix_code(final_code)

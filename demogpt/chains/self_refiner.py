@@ -73,12 +73,12 @@ class SelfRefiner:
         return self.stop_kw in res
 
     def run(self, instruction, plan, result):
-        self.addToHistory("instruction:" + instruction)
-        self.addToHistory("plan:" + plan)
-        self.addToHistory("code:" + result)
+        self.addToHistory(f"instruction:{instruction}")
+        self.addToHistory(f"plan:{plan}")
+        self.addToHistory(f"code:{result}")
         for _ in trange(self.max_iter):
             feedback = self.feedback(instruction=instruction, result=result)
-            self.addToHistory("feedback:" + feedback)
+            self.addToHistory(f"feedback:{feedback}")
             if self.log_intermediate_steps:
                 print(colored("feedback:\n" + feedback, "blue"))
             if self.isCompleted(feedback):
@@ -86,7 +86,7 @@ class SelfRefiner:
             if self.log_intermediate_steps:
                 print(colored("refined result:\n" + result, "green"))
             result = self.refine().replace("{", "{{").replace("}", "}}")
-            self.addToHistory("code:" + result)
+            self.addToHistory(f"code:{result}")
         return result
 
 

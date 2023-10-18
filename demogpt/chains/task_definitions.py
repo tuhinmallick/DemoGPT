@@ -174,19 +174,23 @@ def jsonFixer(data):
     return data.replace("{", "{{").replace("}", "}}")
 
 def isTaskAvailable(task, app_chat, app_prompt_template, app_search, app_summary):
-    if not app_chat:
-        if "chat" in task["name"]:
-            return False
-    elif task["name"] == "python":
+    if (
+        not app_chat
+        and "chat" in task["name"]
+        or app_chat
+        and task["name"] != "python"
+        and task["name"] != "plan_and_execute"
+        and task["name"] != "prompt_template"
+        and app_search
+        and task["name"] == "chat"
+        or app_chat
+        and task["name"] == "python"
+        or app_chat
+        and task["name"] == "plan_and_execute"
+        or app_chat
+        and task["name"] == "prompt_template"
+    ):
         return False
-    elif task["name"] == "plan_and_execute":
-        return False
-    elif task["name"] == "prompt_template":
-        return False
-    elif app_search:
-        if task["name"] == "chat":
-            return False
-
     if not app_prompt_template:
         if task["name"] in [
             "prompt_template",
@@ -195,12 +199,13 @@ def isTaskAvailable(task, app_chat, app_prompt_template, app_search, app_summary
             "string_to_doc"
         ]:
             return False
-        
-    if not app_summary:
-        if task["name"] == "doc_summarizer":
-            return False
-        
-    elif task["name"] == "python":
+
+    if (
+        not app_summary
+        and task["name"] == "doc_summarizer"
+        or app_summary
+        and task["name"] == "python"
+    ):
         return False
 
     if not app_search:
@@ -208,7 +213,7 @@ def isTaskAvailable(task, app_chat, app_prompt_template, app_search, app_summary
             return False
         if task["name"] == "search_chat":
             return False
-        
+
     elif task["name"] == "python":
         return False
 
@@ -223,12 +228,13 @@ def getAvailableTasks(app_type):
     app_summary = app_type["is_summary"] == "true"
     app_prompt_template = app_type["is_ai"] == "true"
 
-    tasks = []
-    for task in ALL_TASKS[:AVAILABLE_TASKS_COUNT]:
-        if isTaskAvailable(task, app_chat, app_prompt_template, app_search, app_summary):
-            tasks.append(task)
-
-    return tasks
+    return [
+        task
+        for task in ALL_TASKS[:AVAILABLE_TASKS_COUNT]
+        if isTaskAvailable(
+            task, app_chat, app_prompt_template, app_search, app_summary
+        )
+    ]
 
 
 def getTasks(app_type):
@@ -260,8 +266,8 @@ def getPlanGenHelper(app_type):
     app_chat_must = app_type["is_chat"] == "true"
     app_summarize_must = app_type["is_summary"] == "true"
     app_search_must = app_type["is_search"] == "true"
-    if not (app_chat_must or app_summarize_must or app_search_must):
-        if app_type["is_ai"] == "true":
+    if app_type["is_ai"] == "true":
+        if not (app_chat_must or app_summarize_must or app_search_must):
             prompt_template_must = True
 
     helper = ""
@@ -274,7 +280,7 @@ def getPlanGenHelper(app_type):
             helper += "Since the application requires up to date knowledge in the web, you must use either 'search_chat' task in the steps.\n"
         else:
             helper += "Since the application requires up to date knowledge in the web, you must use either 'plan_and_execute' task in the steps.\n"
-            
+
     if app_chat_must:
         if app_search_must:
             helper += "Since the application is chat-based, you must use 'ui_input_chat' and 'ui_output_chat' and 'search_chat' tasks in the steps.\n"
