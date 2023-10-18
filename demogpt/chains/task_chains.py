@@ -81,7 +81,7 @@ class TaskChains:
         res = json.loads(res)
         title = res.get("title")
         data_type = res.get("data_type")
-        code = f"""
+        return f"""
 uploaded_file = st.file_uploader("{title}", type={data_type}, key='{variable}')
 if uploaded_file is not None:
     # Create a temporary file to store the uploaded content
@@ -92,7 +92,6 @@ if uploaded_file is not None:
 else:
     {variable} = ''
         """
-        return code
 
     @classmethod
     def pathToContent(cls, task, code_snippets):
@@ -134,8 +133,8 @@ else:
             instruction=instruction,
             variable=variable,
         )
-        
-        code = f"""
+
+        return f"""
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):  
         st.markdown(message["content"])
@@ -145,14 +144,12 @@ if {variable} := st.chat_input("{placeholder}"):
         st.markdown({variable})
     st.session_state.messages.append({{"role": "user", "content": {variable}}})
         """
-        
-        return code
 
     @classmethod
     def uiOutputChat(cls, task):
         res = ", ".join(task["input_key"])
 
-        code = f"""
+        return f"""
 import time
 
 with st.chat_message("assistant"):
@@ -169,7 +166,6 @@ with st.chat_message("assistant"):
     if full_response:
         st.session_state.messages.append({{"role": "assistant", "content": full_response}})        
         """
-        return code
 
     @classmethod
     def chat(cls, task):
@@ -215,10 +211,10 @@ with st.chat_message("assistant"):
             instruction=instruction,
             inputs=argument,
         )
-        
+
         res = res.replace('"',"'")
 
-        code = f"""
+        return f"""
 from langchain.agents import ConversationalChatAgent, AgentExecutor
 from langchain.tools import DuckDuckGoSearchRun
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
@@ -263,8 +259,6 @@ else:
     {variable} = ''
   
         """
-        
-        return code
 
     @classmethod
     def search(cls, task):
@@ -279,10 +273,10 @@ else:
             instruction=instruction,
             inputs=argument,
         )
-        
+
         res = res.replace('"',"'")
 
-        code = f"""
+        return f"""
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.tools import DuckDuckGoSearchRun
@@ -316,7 +310,6 @@ elif {argument}:
 else:
     {variable} = ''
         """
-        return code
 
     @classmethod
     def docLoad(cls, task, code_snippets):
@@ -331,7 +324,7 @@ else:
                     best_ratio = ratio
                     best_match = key
             return best_match
-        
+
         type2loader = {
             "txt": "TextLoader",
             "docx":"UnstructuredWordDocumentLoader",
@@ -345,21 +338,21 @@ else:
             "xlsx":"UnstructuredExcelLoader",
             "youtube":"YoutubeLoader",  
         }
-        
+
         loader2type = {type2loader[dtype]:dtype for dtype in type2loader}
-        
+
         def getLoaderCall(data_type):
             if data_type in loader2type:
                 data_type = loader2type[data_type]
-            
+
             loader = type2loader.get(data_type)  # First, try to get the exact match
             if loader is None:
                 # If there's no exact match, get the most similar key and retrieve the value
                 similar_key = get_most_similar_key(data_type, type2loader.keys())
                 loader = type2loader[similar_key]
-                
+
             loader = type2loader[data_type]
-            
+
             if data_type in [
                 "txt",
                 "online_pdf",
@@ -386,23 +379,19 @@ else:
         loader = {loader}("Notion_DB")"""
             else:
                 loader_line = f"loader = TextLoader({argument})"
-            
+
             return loader_line
-        
+
         instruction = task["description"]
         argument = task["input_key"][0]
         variable = ", ".join(task["output_key"])
         function_name = task["task_name"]
-        
+
         variable_match = re.search(r"(\w+)\s*=\s*temp_file\.name", code_snippets, re.MULTILINE)
-        
-        if variable_match:
-            variable_name = variable_match.group(1).strip()
-        else:
-            variable_name = ''
-            
+
+        variable_name = variable_match.group(1).strip() if variable_match else ''
         match = re.search(r"st\.file_uploader\(\s*?.*?type=\s*\[(.*?)\]\s*?.*?\)", code_snippets, re.DOTALL)
-                
+
         loader_line = ""
 
         if variable_name == argument and  match:
@@ -421,9 +410,9 @@ else:
                 instruction=instruction,
                 code_snippets=code_snippets
                 )
-            
+
             loader_line = getLoaderCall(loader)
-            
+
         code = f"""
 import shutil
 from langchain.document_loaders import *
@@ -443,18 +432,16 @@ else:
     def stringToDoc(cls, task):
         argument = ", ".join(task["input_key"])
         variable = ", ".join(task["output_key"])
-        code = f"""
+        return f"""
 from langchain.docstore.document import Document
 {variable} =  [Document(page_content={argument}, metadata={{'source': 'local'}})]
         """
-        return code
 
     @classmethod
     def docToString(cls, task):
         argument = ", ".join(task["input_key"])
         variable = ", ".join(task["output_key"])
-        code = f'{variable} = "".join([doc.page_content for doc in {argument}])'
-        return code
+        return f'{variable} = "".join([doc.page_content for doc in {argument}])'
 
     @classmethod
     def summarize(cls, task):
@@ -462,7 +449,7 @@ from langchain.docstore.document import Document
         variable = ", ".join(task["output_key"])
         function_name = task["task_name"]
 
-        code = f"""
+        return f"""
 from langchain.chat_models import ChatOpenAI
 from langchain.chains.summarize import load_summarize_chain
 
@@ -479,7 +466,6 @@ elif {argument}:
 else:
     {variable} = ""
 """
-        return code
 
     @classmethod
     def pythonCoder(cls, task, code_snippets):

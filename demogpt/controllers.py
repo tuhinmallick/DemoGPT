@@ -58,7 +58,7 @@ def checkTaskNames(tasks, app_type):
 def validate(input, app_type):
     if isinstance(input,str):#means plan
         input = planToTaskFormat(input) 
-    
+
     res1 = checkTaskNames(input, app_type)
     res2 = checkAppTypeCompatiblity(input, app_type)
     res3 = checkRedundantTasks(input)
@@ -66,7 +66,7 @@ def validate(input, app_type):
     res5 = checkInputOuputCompatibility(input)
 
     feedback = ""
-    
+
     if not res1["valid"]:
         feedback += "\n" + res1["feedback"]
     if not res2["valid"]:
@@ -78,8 +78,8 @@ def validate(input, app_type):
     if not res5["valid"]:
         feedback += "\n" + res5["feedback"]
 
-    valid = len(feedback) == 0
-    
+    valid = not feedback
+
     print("feedback:")
     print(feedback)
 
@@ -205,18 +205,14 @@ def checkAppTypeCompatiblity_old(tasks, app_type):
     app_search = app_type["is_search"] == "true"
     app_summary = app_type["is_summary"] == "true"
     if not (app_chat or app_search or app_summary):
-        if app_type["is_ai"] == "true":
-            app_prompt_template = 1
-        else:
-            app_prompt_template = -1
-
+        app_prompt_template = 1 if app_type["is_ai"] == "true" else -1
     feedback = ""
     ################################################################################################################################################
     # chat app check
     if app_chat:
         for task_type in must_chat_tasks - task_chat:
             feedback += f"The app is chat-based but you didn't use {task_type} in your tasks. Please add it and try again\n"
-            
+
         for task_type in must_chat_tasks:
             if task_types_list.count(task_type) > 1:
                 feedback += f"You can use {task_type} in your tasks only once. Please remove the redundant ones and combine in a single task\n"
@@ -233,12 +229,12 @@ def checkAppTypeCompatiblity_old(tasks, app_type):
             feedback += f"The app does not need {task_type} task but you used {task_type} task in your task list. Please remove them and try again\n"
     ################################################################################################################################################
     # prompt_template app check
-    if app_prompt_template == 1:
-        for task_type in must_prompt_template_tasks - task_prompt_template:
-            feedback += f"The app is ai-based but you didn't use {task_type} in your tasks. Please add it and try again\n"
-    elif app_prompt_template == -1:
+    if app_prompt_template == -1:
         for task_type in task_prompt_template:
             feedback += f"The app is not ai-based but you used {task_type} in your tasks which is redundant. Please remove it and try again\n"
+    elif app_prompt_template == 1:
+        for task_type in must_prompt_template_tasks - task_prompt_template:
+            feedback += f"The app is ai-based but you didn't use {task_type} in your tasks. Please add it and try again\n"
     ################################################################################################################################################
     # prompt_template app check
     if app_summary:
@@ -293,22 +289,13 @@ def checkAppTypeCompatiblity(tasks, app_type):
     app_search = app_type["is_search"] == "true"
     app_summary = app_type["is_summary"] == "true"
     if not (app_chat or app_search or app_summary):
-        if app_type["is_ai"] == "true":
-            app_prompt_template = 1
-        else:
-            app_prompt_template = -1
-            
-    if app_chat:
-        if app_search:
-            must_search_tasks.remove("plan_and_execute")
-            must_chat_tasks.remove("chat")
-        else:
-            must_search_tasks.remove("search_chat")
-            must_chat_tasks.remove("search_chat")
+        app_prompt_template = 1 if app_type["is_ai"] == "true" else -1
+    if app_chat and app_search:
+        must_search_tasks.remove("plan_and_execute")
+        must_chat_tasks.remove("chat")
     else:
         must_search_tasks.remove("search_chat")
         must_chat_tasks.remove("search_chat")
-        
     task_prompt_template = must_prompt_template_tasks & task_types
     task_summary = must_summary_template_tasks & task_types
     task_search = must_search_tasks & task_types
@@ -320,7 +307,7 @@ def checkAppTypeCompatiblity(tasks, app_type):
     if app_chat:
         for task_type in must_chat_tasks - task_chat:
             feedback += f"The app is chat-based but you didn't use {task_type} in your tasks. Please add it and try again\n"
-            
+
         for task_type in must_chat_tasks:
             if task_types_list.count(task_type) > 1:
                 feedback += f"You can use {task_type} in your tasks only once. Please remove the redundant ones and combine in a single task\n"
@@ -337,12 +324,12 @@ def checkAppTypeCompatiblity(tasks, app_type):
             feedback += f"The app does not need {task_type} task but you used {task_type} task in your task list. Please remove them and try again\n"
     ################################################################################################################################################
     # prompt_template app check
-    if app_prompt_template == 1:
-        for task_type in must_prompt_template_tasks - task_prompt_template:
-            feedback += f"The app is ai-based but you didn't use {task_type} in your tasks. Please add it and try again\n"
-    elif app_prompt_template == -1:
+    if app_prompt_template == -1:
         for task_type in task_prompt_template:
             feedback += f"The app is not ai-based but you used {task_type} in your tasks which is redundant. Please remove it and try again\n"
+    elif app_prompt_template == 1:
+        for task_type in must_prompt_template_tasks - task_prompt_template:
+            feedback += f"The app is ai-based but you didn't use {task_type} in your tasks. Please add it and try again\n"
     ################################################################################################################################################
     # summarization app check
     if app_summary:
@@ -444,17 +431,16 @@ def checkPromptTemplates(templates, task, additional_inputs=[]):
     inputs = task["input_key"]
     if inputs == "none":
         inputs = []
-    else:
-        if isinstance(inputs, str):
-            if inputs.startswith("["):
-                inputs = inputs[1:-1]
-            inputs = [var.strip() for var in inputs.split(",")]
+    elif isinstance(inputs, str):
+        if inputs.startswith("["):
+            inputs = inputs[1:-1]
+        inputs = [var.strip() for var in inputs.split(",")]
     template_inputs = inputs + additional_inputs
-    feedback = ""
-    for input_key in template_inputs:
-        if f"{{{input_key}}}" not in templates:
-            feedback += f"'{{{input_key}}}' is not included in any of the templates. You must add '{{{input_key}}}' inside of at least one of the templates.\n"
-
+    feedback = "".join(
+        f"'{{{input_key}}}' is not included in any of the templates. You must add '{{{input_key}}}' inside of at least one of the templates.\n"
+        for input_key in template_inputs
+        if f"{{{input_key}}}" not in templates
+    )
     # now detect extras
 
     matches = set(re.findall(r"\{([^}]+)\}", templates))

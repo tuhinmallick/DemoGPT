@@ -131,7 +131,7 @@ def reorderTasksForChatApp(tasks):
         if task["task_type"] == "ui_input_chat":
             input_chat_step = task["step"]
             break
-    
+
     if input_chat_step == -1:
         return tasks 
 
@@ -139,12 +139,11 @@ def reorderTasksForChatApp(tasks):
     for task in tasks:
         for input_key in task["input_key"]:
             input2tasks[input_key] = input2tasks.get(input_key,[]) + [task]
-    
-    non_pre_task_steps = set() # these are the ones that cannot be done before chat input
-    steps = {i for i in range(1,len(tasks)+1)}
-    all_steps = {i for i in range(1,len(tasks)+1)}
+
+    steps = set(range(1,len(tasks)+1))
+    all_steps = set(range(1,len(tasks)+1))
     root = step2task[input_chat_step]
-    non_pre_task_steps.add(root["step"])
+    non_pre_task_steps = {root["step"]}
     change = True
     while change:
         change = False
@@ -158,12 +157,12 @@ def reorderTasksForChatApp(tasks):
                         non_pre_task_steps.add(task2["step"])
                         steps.remove(task["step"])
     post_steps = sorted(list(all_steps-steps))
-    steps = sorted(list(steps))     
+    steps = sorted(list(steps))
     pre_tasks = [step2task[step] for step in steps]
     post_tasks = [step2task[step] for step in post_steps]
     new_tasks = pre_tasks + post_tasks
     print("after reordering:")
-    print(new_tasks)      
+    print(new_tasks)
     return new_tasks
 
 def getFunctionNames(code):
@@ -468,7 +467,7 @@ else:
     human_input = template["human_input"]
     if human_input not in inputs:
         human_input = getHumanInput(system_template, inputs)
-    imports = f"""
+    imports = """
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
@@ -542,12 +541,12 @@ else:
     with st.spinner('DemoGPT is working on it. It takes less than 10 seconds...'):
         {variable} = {signature}
             """
-        
-        
+
+
 
     temperature = 0 if templates.get("variety", "False") == "False" else AI_VARIETY_TEMPERATURE
 
-    code = f"""\n
+    return f"""\n
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import (ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate)
@@ -573,7 +572,6 @@ def {signature}:
 {function_call}               
 
 """
-    return code
 
 
 def getPromptChatTemplateCodeSeperate(templates, task):

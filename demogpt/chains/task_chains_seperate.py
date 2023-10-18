@@ -261,10 +261,10 @@ with st.chat_message("assistant"):
             instruction=instruction,
             inputs=argument,
         )
-        
+
         res = res.replace('"',"'")
 
-        imports = f"""
+        imports = """
 from langchain.agents import ConversationalChatAgent, AgentExecutor
 from langchain.tools import DuckDuckGoSearchRun
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
@@ -310,7 +310,7 @@ elif {argument}:
 else:
     {variable} = ''
         """
-        
+
         return {
             "imports":imports,
             "functions":functions,
@@ -332,10 +332,10 @@ else:
             instruction=instruction,
             inputs=argument,
         )
-        
+
         res = res.replace('"',"'")
 
-        imports = f"""
+        imports = """
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.tools import DuckDuckGoSearchRun
@@ -371,7 +371,7 @@ elif {argument}:
 else:
     {variable} = ''
         """
-        
+
         return {
             "imports":imports,
             "functions":functions,
@@ -393,7 +393,7 @@ else:
                     best_ratio = ratio
                     best_match = key
             return best_match
-        
+
         type2loader = {
             "txt": "TextLoader",
             "docx":"UnstructuredWordDocumentLoader",
@@ -407,21 +407,21 @@ else:
             "xlsx":"UnstructuredExcelLoader",
             "youtube":"YoutubeLoader",  
         }
-        
+
         loader2type = {type2loader[dtype]:dtype for dtype in type2loader}
-        
+
         def getLoaderCall(data_type):
             if data_type in loader2type:
                 data_type = loader2type[data_type]
-            
+
             loader = type2loader.get(data_type)  # First, try to get the exact match
             if loader is None:
                 # If there's no exact match, get the most similar key and retrieve the value
                 similar_key = get_most_similar_key(data_type, type2loader.keys())
                 loader = type2loader[similar_key]
-                
+
             loader = type2loader[data_type]
-            
+
             if data_type in [
                 "txt",
                 "online_pdf",
@@ -448,23 +448,19 @@ else:
         loader = {loader}("Notion_DB")"""
             else:
                 loader_line = f"loader = TextLoader({argument})"
-            
+
             return loader_line
-        
+
         instruction = task["description"]
         argument = task["input_key"][0]
         variable = ", ".join(task["output_key"])
         function_name = task["task_name"]
-        
+
         variable_match = re.search(r"(\w+)\s*=\s*temp_file\.name", code_snippets, re.MULTILINE)
-        
-        if variable_match:
-            variable_name = variable_match.group(1).strip()
-        else:
-            variable_name = ''
-            
+
+        variable_name = variable_match.group(1).strip() if variable_match else ''
         match = re.search(r"st\.file_uploader\(\s*?.*?type=\s*\[(.*?)\]\s*?.*?\)", code_snippets, re.DOTALL)
-                
+
         loader_line = ""
 
         if variable_name == argument and  match:
@@ -483,10 +479,10 @@ else:
                 instruction=instruction,
                 code_snippets=code_snippets
                 )
-            
+
             loader_line = getLoaderCall(loader)
-            
-        imports = f"""
+
+        imports = """
 import shutil
 from langchain.document_loaders import *
 
@@ -504,7 +500,7 @@ if {argument}:
 else:
     {variable} = ''
         """
-        
+
         return {
             "imports":imports,
             "functions":functions,
@@ -517,13 +513,13 @@ else:
     def stringToDoc(cls, task):
         argument = ", ".join(task["input_key"])
         variable = ", ".join(task["output_key"])
-        imports = f"""
+        imports = """
 from langchain.docstore.document import Document
         """
         code = f"""
 {variable} =  [Document(page_content={argument}, metadata={{'source': 'local'}})]
         """
-        
+
         return {
             "imports":imports,
             "functions":"",
@@ -552,7 +548,7 @@ from langchain.docstore.document import Document
         variable = ", ".join(task["output_key"])
         function_name = task["task_name"]
 
-        imports = f"""
+        imports = """
 from langchain.chat_models import ChatOpenAI
 from langchain.chains.summarize import load_summarize_chain
         """
